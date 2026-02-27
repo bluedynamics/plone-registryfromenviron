@@ -1,9 +1,8 @@
 """EnvOverrideRegistry — Registry subclass checking env vars before ZODB."""
 
-from plone.app.registry.registry import Registry as BaseAppRegistry
-
 from .environ import _MARKER
 from .environ import get_override
+from plone.app.registry.registry import Registry as BaseAppRegistry
 
 
 class EnvOverrideRegistry(BaseAppRegistry):

@@ -1,11 +1,11 @@
 """Scan os.environ for PLONE_REGISTRY_* variables and coerce to field types."""
 
+from plone.registry.fieldref import FieldRef
+from zope.schema import interfaces as schema_ifaces
+
 import json
 import logging
 import os
-
-from plone.registry.fieldref import FieldRef
-from zope.schema import interfaces as schema_ifaces
 
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ def scan_environ():
     Double underscores in env var names are converted to dots.
     """
     return {
-        key[len(PREFIX):].replace("__", "."): value
+        key[len(PREFIX) :].replace("__", "."): value
         for key, value in os.environ.items()
         if key.startswith(PREFIX)
     }

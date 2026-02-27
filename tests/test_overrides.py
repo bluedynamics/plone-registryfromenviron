@@ -1,11 +1,10 @@
 """Tests for plone.registryfromenviron."""
 
-import pytest
-
-from unittest.mock import MagicMock
-
 from plone.registry import field as reg_field
 from plone.registry.registry import Registry
+from unittest.mock import MagicMock
+
+import pytest
 
 
 # ── Fixtures ──────────────────────────────────────────────────────
@@ -115,7 +114,6 @@ class TestCoerceValue:
 
     def test_decimal(self):
         from decimal import Decimal
-
         from plone.registryfromenviron.environ import coerce_value
 
         result = coerce_value("1.23", reg_field.Decimal())
@@ -156,7 +154,6 @@ class TestCoerceValue:
 
     def test_json_invalid(self):
         from json import JSONDecodeError
-
         from plone.registryfromenviron.environ import coerce_value
 
         f = reg_field.List(value_type=reg_field.TextLine())
@@ -183,7 +180,6 @@ class TestCoerceValue:
 
 
 class TestGetOverride:
-
     def test_no_override_returns_marker(self, _clean_overrides, registry):
         from plone.registryfromenviron.environ import _MARKER
         from plone.registryfromenviron.environ import get_override
@@ -235,7 +231,6 @@ class TestGetOverride:
 
 
 class TestEnvOverrideRegistry:
-
     def test_getitem_with_override(self, _clean_overrides, registry):
         from plone.registryfromenviron.registry import EnvOverrideRegistry
 
@@ -320,7 +315,6 @@ class TestEnvOverrideRegistry:
 
 
 class TestSetupHandlers:
-
     def _make_context(self, marker_file, site):
         ctx = MagicMock()
         ctx.readDataFile.side_effect = lambda f: "marker" if f == marker_file else None
@@ -409,13 +403,13 @@ class TestEnvVarScanning:
         from plone.registryfromenviron.environ import PREFIX
 
         key = "PLONE_REGISTRY_plone__smtp_host"
-        assert key[len(PREFIX):].replace("__", ".") == "plone.smtp_host"
+        assert key[len(PREFIX) :].replace("__", ".") == "plone.smtp_host"
 
     def test_single_underscore_preserved(self):
         from plone.registryfromenviron.environ import PREFIX
 
         key = "PLONE_REGISTRY_my__app__some_setting"
-        assert key[len(PREFIX):].replace("__", ".") == "my.app.some_setting"
+        assert key[len(PREFIX) :].replace("__", ".") == "my.app.some_setting"
 
     def test_scanning_with_env_vars(self, monkeypatch):
         """Verify that scan_environ picks up PLONE_REGISTRY_* vars."""

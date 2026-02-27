@@ -1,10 +1,9 @@
 """GenericSetup install/uninstall handlers for plone.registryfromenviron."""
 
-import logging
-
+from .registry import EnvOverrideRegistry
 from plone.app.registry.registry import Registry as BaseAppRegistry
 
-from .registry import EnvOverrideRegistry
+import logging
 
 
 log = logging.getLogger(__name__)
