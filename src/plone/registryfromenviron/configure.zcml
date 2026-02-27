@@ -1,0 +1,38 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+    >
+
+  <genericsetup:registerProfile
+      name="default"
+      title="plone.registryfromenviron"
+      description="Override plone.registry values from environment variables"
+      provides="Products.GenericSetup.interfaces.EXTENSION"
+      for="plone.base.interfaces.IPloneSiteRoot"
+      directory="profiles/default"
+      />
+
+  <genericsetup:importStep
+      name="plone.registryfromenviron"
+      title="Install plone.registryfromenviron"
+      description="Swap portal_registry class to EnvOverrideRegistry."
+      handler="plone.registryfromenviron.setuphandlers.install"
+      />
+
+  <genericsetup:registerProfile
+      name="uninstall"
+      title="plone.registryfromenviron (uninstall)"
+      description="Revert registry class"
+      provides="Products.GenericSetup.interfaces.EXTENSION"
+      for="plone.base.interfaces.IPloneSiteRoot"
+      directory="profiles/uninstall"
+      />
+
+  <genericsetup:importStep
+      name="plone.registryfromenviron.uninstall"
+      title="Uninstall plone.registryfromenviron"
+      description="Revert portal_registry class to base Registry."
+      handler="plone.registryfromenviron.setuphandlers.uninstall"
+      />
+
+</configure>
