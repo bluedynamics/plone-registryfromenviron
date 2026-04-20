@@ -8,6 +8,11 @@ in 2.0 — overrides now happen via an import-time monkey-patch on the base
 To keep any v1.x ZODB pickle referencing this symbol loadable, the name
 resolves to the plain base class. Unpickling produces a regular
 ``Registry`` instance; the patch applies at call time.
+
+Note: v1.x code using ``isinstance(reg, EnvOverrideRegistry)`` to detect
+whether overrides are active now always returns True for every ``Registry``
+instance. Use ``bool(plone.registryfromenviron.patch._originals)`` if that
+distinction matters.
 """
 
 from plone.registry.registry import Registry
