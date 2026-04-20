@@ -1,21 +1,21 @@
-"""EnvOverrideRegistry — Registry subclass checking env vars before ZODB."""
+"""Backwards-compatibility shim for v1.x.
 
-from .environ import _MARKER
-from .environ import get_override
-from plone.app.registry.registry import Registry as BaseAppRegistry
+v1.x persisted ``portal_registry.__class__ = EnvOverrideRegistry`` via a
+GenericSetup handler. That approach was fragile (see issue #1) and is gone
+in 2.0 — overrides now happen via an import-time monkey-patch on the base
+``Registry`` class. See :mod:`plone.registryfromenviron.patch`.
+
+To keep any v1.x ZODB pickle referencing this symbol loadable, the name
+resolves to the plain base class. Unpickling produces a regular
+``Registry`` instance; the patch applies at call time.
+
+Note: v1.x code using ``isinstance(reg, EnvOverrideRegistry)`` to detect
+whether overrides are active now always returns True for every ``Registry``
+instance. Use ``bool(plone.registryfromenviron.patch._originals)`` if that
+distinction matters.
+"""
+
+from plone.registry.registry import Registry
 
 
-class EnvOverrideRegistry(BaseAppRegistry):
-    """Registry that checks environment variables before ZODB values."""
-
-    def __getitem__(self, name):
-        value = get_override(self, name)
-        if value is not _MARKER:
-            return value
-        return super().__getitem__(name)
-
-    def get(self, name, default=None):
-        value = get_override(self, name)
-        if value is not _MARKER:
-            return value
-        return super().get(name, default)
+EnvOverrideRegistry = Registry

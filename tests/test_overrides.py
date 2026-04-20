@@ -2,7 +2,6 @@
 
 from plone.registry import field as reg_field
 from plone.registry.registry import Registry
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -227,170 +226,131 @@ class TestGetOverride:
         assert get_override(registry, "my.alias") == 77
 
 
-# ── EnvOverrideRegistry tests ────────────────────────────────────
+# ── patch tests ──────────────────────────────────────────────────
 
 
-class TestEnvOverrideRegistry:
-    def test_getitem_with_override(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
+class TestPatch:
+    """Test the monkey-patch module."""
 
-        registry.__class__ = EnvOverrideRegistry
-        _clean_overrides.RAW_OVERRIDES["my.textline"] = "from_env"
+    def test_apply_patch_is_idempotent(self, _clean_overrides):
+        """Calling apply_patch() twice leaves exactly one patch layer."""
+        from plone.registry.registry import Registry as BaseRegistry
+        from plone.registryfromenviron.patch import apply_patch
+        from plone.registryfromenviron.patch import unpatch
+
+        try:
+            apply_patch()
+            after_first = BaseRegistry.__getitem__
+            apply_patch()
+            after_second = BaseRegistry.__getitem__
+            assert after_first is after_second
+        finally:
+            unpatch()
+
+    def test_unpatch_restores_originals(self, _clean_overrides):
+        """unpatch() puts the original __getitem__ and get back."""
+        from plone.registry.registry import Registry as BaseRegistry
+        from plone.registryfromenviron.patch import apply_patch
+        from plone.registryfromenviron.patch import unpatch
+
+        unpatch()  # clean baseline in case a prior test left the patch applied
+        orig_getitem = BaseRegistry.__getitem__
+        orig_get = BaseRegistry.get
+        apply_patch()
+        assert BaseRegistry.__getitem__ is not orig_getitem
+        unpatch()
+        assert BaseRegistry.__getitem__ is orig_getitem
+        assert BaseRegistry.get is orig_get
+
+    def test_unpatch_when_not_patched_is_noop(self):
+        """unpatch() is safe to call when nothing is patched."""
+        from plone.registryfromenviron.patch import unpatch
+
+        unpatch()  # should not raise
+        unpatch()  # still safe
+
+
+class TestPatchedRegistry:
+    """Test the patched Registry behavior — replaces v1.x TestEnvOverrideRegistry."""
+
+    @pytest.fixture
+    def patched(self, _clean_overrides):
+        """Apply the patch for the duration of the test."""
+        from plone.registryfromenviron.patch import apply_patch
+        from plone.registryfromenviron.patch import unpatch
+
+        apply_patch()
+        yield _clean_overrides
+        unpatch()
+
+    def test_getitem_with_override(self, patched, registry):
+        patched.RAW_OVERRIDES["my.textline"] = "from_env"
         assert registry["my.textline"] == "from_env"
 
-    def test_getitem_fallback_to_zodb(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
+    def test_getitem_fallback_to_zodb(self, patched, registry):
         assert registry["my.textline"] == "original"
 
-    def test_getitem_keyerror_for_missing(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
+    def test_getitem_keyerror_for_missing(self, patched, registry):
         with pytest.raises(KeyError):
             registry["no.such.key"]
 
-    def test_get_with_override(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
-        _clean_overrides.RAW_OVERRIDES["my.number"] = "42"
+    def test_get_with_override(self, patched, registry):
+        patched.RAW_OVERRIDES["my.number"] = "42"
         assert registry.get("my.number") == 42
 
-    def test_get_fallback_to_zodb(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
+    def test_get_fallback_to_zodb(self, patched, registry):
         assert registry.get("my.textline") == "original"
 
-    def test_get_returns_default_for_missing(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
+    def test_get_returns_default_for_missing(self, patched, registry):
         assert registry.get("no.such.key", "default") == "default"
 
-    def test_get_returns_none_for_missing_no_default(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
+    def test_get_returns_none_for_missing_no_default(self, patched, registry):
         assert registry.get("no.such.key") is None
 
-    def test_bool_override(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
-        _clean_overrides.RAW_OVERRIDES["my.flag"] = "true"
+    def test_bool_override(self, patched, registry):
+        patched.RAW_OVERRIDES["my.flag"] = "true"
         assert registry["my.flag"] is True
 
-    def test_list_override(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
-        _clean_overrides.RAW_OVERRIDES["my.items"] = '["x", "y"]'
+    def test_list_override(self, patched, registry):
+        patched.RAW_OVERRIDES["my.items"] = '["x", "y"]'
         assert registry["my.items"] == ["x", "y"]
 
-    def test_float_override(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
-        _clean_overrides.RAW_OVERRIDES["my.rate"] = "9.81"
+    def test_float_override(self, patched, registry):
+        patched.RAW_OVERRIDES["my.rate"] = "9.81"
         assert registry["my.rate"] == 9.81
 
-    def test_dict_override(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
-        _clean_overrides.RAW_OVERRIDES["my.mapping"] = '{"a": "1"}'
+    def test_dict_override(self, patched, registry):
+        patched.RAW_OVERRIDES["my.mapping"] = '{"a": "1"}'
         assert registry["my.mapping"] == {"a": "1"}
 
-    def test_is_subclass_of_base(self):
-        from plone.app.registry.registry import Registry as BaseAppRegistry
+    def test_patch_affects_app_registry_subclass(self, patched):
+        """plone.app.registry.registry.Registry inherits the patched methods."""
+        from plone.app.registry.registry import Registry as AppRegistry
+        from plone.registry.registry import Registry as BaseRegistry
+
+        assert AppRegistry.__getitem__ is BaseRegistry.__getitem__
+        assert AppRegistry.get is BaseRegistry.get
+
+
+# ── EnvOverrideRegistry alias tests ─────────────────────────────
+
+
+class TestEnvOverrideRegistryAlias:
+    """v1.x pickle-compat: EnvOverrideRegistry must resolve to plain Registry."""
+
+    def test_alias_is_base_registry(self):
+        from plone.registry.registry import Registry as BaseRegistry
         from plone.registryfromenviron.registry import EnvOverrideRegistry
 
-        assert issubclass(EnvOverrideRegistry, BaseAppRegistry)
+        assert EnvOverrideRegistry is BaseRegistry
 
-
-# ── setuphandlers tests ──────────────────────────────────────────
-
-
-class TestSetupHandlers:
-    def _make_context(self, marker_file, site):
-        ctx = MagicMock()
-        ctx.readDataFile.side_effect = lambda f: "marker" if f == marker_file else None
-        ctx.getSite.return_value = site
-        return ctx
-
-    def test_install_swaps_class(self, registry):
+    def test_instance_type_is_base_registry(self):
+        """An instance created via the alias is a plain Registry."""
+        from plone.registry.registry import Registry as BaseRegistry
         from plone.registryfromenviron.registry import EnvOverrideRegistry
-        from plone.registryfromenviron.setuphandlers import install
 
-        site = MagicMock()
-        site.portal_registry = registry
-        ctx = self._make_context("install_marker.txt", site)
-        install(ctx)
-        assert isinstance(registry, EnvOverrideRegistry)
-
-    def test_install_already_swapped_is_noop(self, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-        from plone.registryfromenviron.setuphandlers import install
-
-        registry.__class__ = EnvOverrideRegistry
-        site = MagicMock()
-        site.portal_registry = registry
-        ctx = self._make_context("install_marker.txt", site)
-        install(ctx)
-        assert isinstance(registry, EnvOverrideRegistry)
-
-    def test_install_no_marker_skips(self):
-        from plone.registryfromenviron.setuphandlers import install
-
-        ctx = MagicMock()
-        ctx.readDataFile.return_value = None
-        install(ctx)
-        ctx.getSite.assert_not_called()
-
-    def test_install_no_registry_is_safe(self):
-        from plone.registryfromenviron.setuphandlers import install
-
-        site = MagicMock(spec=[])
-        ctx = self._make_context("install_marker.txt", site)
-        install(ctx)
-
-    def test_uninstall_reverts_class(self, registry):
-        from plone.app.registry.registry import Registry as BaseAppRegistry
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-        from plone.registryfromenviron.setuphandlers import uninstall
-
-        registry.__class__ = EnvOverrideRegistry
-        site = MagicMock()
-        site.portal_registry = registry
-        ctx = self._make_context("uninstall_marker.txt", site)
-        uninstall(ctx)
-        assert type(registry) is BaseAppRegistry
-
-    def test_uninstall_not_swapped_is_noop(self, registry):
-        from plone.registryfromenviron.setuphandlers import uninstall
-
-        site = MagicMock()
-        site.portal_registry = registry
-        ctx = self._make_context("uninstall_marker.txt", site)
-        uninstall(ctx)
-
-    def test_uninstall_no_marker_skips(self):
-        from plone.registryfromenviron.setuphandlers import uninstall
-
-        ctx = MagicMock()
-        ctx.readDataFile.return_value = None
-        uninstall(ctx)
-        ctx.getSite.assert_not_called()
-
-    def test_uninstall_no_registry_is_safe(self):
-        from plone.registryfromenviron.setuphandlers import uninstall
-
-        site = MagicMock(spec=[])
-        ctx = self._make_context("uninstall_marker.txt", site)
-        uninstall(ctx)
+        obj = EnvOverrideRegistry()
+        assert type(obj) is BaseRegistry
 
 
 # ── env var scanning tests ───────────────────────────────────────
@@ -424,3 +384,85 @@ class TestEnvVarScanning:
             "plone.smtp_host": "mail.test.com",
             "plone.flag": "true",
         }
+
+
+# ── import-time activation tests ─────────────────────────────────
+
+
+class TestImportTimeActivation:
+    """The package should patch Registry at import if RAW_OVERRIDES is non-empty."""
+
+    def test_maybe_activate_patches_when_overrides_present(
+        self, monkeypatch, _clean_overrides
+    ):
+        from plone.registry.registry import Registry as BaseRegistry
+        from plone.registryfromenviron import _maybe_activate
+        from plone.registryfromenviron.patch import unpatch
+
+        unpatch()  # clean baseline
+        orig_getitem = BaseRegistry.__getitem__
+        _clean_overrides.RAW_OVERRIDES["some.key"] = "v"
+        try:
+            _maybe_activate()
+            assert BaseRegistry.__getitem__ is not orig_getitem
+        finally:
+            unpatch()
+
+    def test_maybe_activate_noop_when_no_overrides(self, _clean_overrides):
+        from plone.registry.registry import Registry as BaseRegistry
+        from plone.registryfromenviron import _maybe_activate
+        from plone.registryfromenviron.patch import unpatch
+
+        unpatch()  # ensure clean baseline
+        orig_getitem = BaseRegistry.__getitem__
+        assert _clean_overrides.RAW_OVERRIDES == {}
+        _maybe_activate()
+        assert BaseRegistry.__getitem__ is orig_getitem
+
+
+# ── upgrade step tests ───────────────────────────────────────────
+
+
+class _FakeSite:
+    _p_changed = False
+
+
+class _FakeSetupTool:
+    def __init__(self):
+        self.aq_parent = _FakeSite()
+        self.unset_called_with = None
+
+    def unsetLastVersionForProfile(self, profile_id):
+        self.unset_called_with = profile_id
+
+
+class TestUpgradeStep:
+    """Tests for the v1 → v2 GS upgrade step."""
+
+    def test_upgrade_forces_site_re_pickle(self):
+        from plone.registryfromenviron.upgrades import upgrade_to_2
+
+        tool = _FakeSetupTool()
+        upgrade_to_2(tool)
+        assert tool.aq_parent._p_changed is True
+
+    def test_upgrade_unregisters_profile(self):
+        from plone.registryfromenviron.upgrades import upgrade_to_2
+
+        tool = _FakeSetupTool()
+        upgrade_to_2(tool)
+        assert tool.unset_called_with == "plone.registryfromenviron:default"
+
+    def test_upgrade_handles_missing_site(self):
+        """If aq_parent is missing, the unregister still runs cleanly."""
+        from plone.registryfromenviron.upgrades import upgrade_to_2
+
+        class _ToolWithoutParent:
+            unset_called_with = None
+
+            def unsetLastVersionForProfile(self, profile_id):
+                self.unset_called_with = profile_id
+
+        tool = _ToolWithoutParent()
+        upgrade_to_2(tool)
+        assert tool.unset_called_with == "plone.registryfromenviron:default"

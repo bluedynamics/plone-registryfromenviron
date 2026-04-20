@@ -10,16 +10,22 @@ the same Plone image can run in development, staging and production with differe
 
 ## How it works
 
-At install time, the package swaps the `portal_registry` object's class to a subclass that checks environment variables **before** falling back to ZODB-stored values.
-All existing registry data is preserved.
-No monkey-patching -- standard Python subclassing with `super()`.
+At import time, the package scans `os.environ` for `PLONE_REGISTRY_*` variables.
+If any are present, it patches `plone.registry.registry.Registry.__getitem__` and `.get` so that reads consult the env-var values first, falling back to ZODB when a key is not overridden.
+If no matching env vars are set, the package is a silent no-op with zero runtime cost.
+
+All existing registry data is preserved — overrides are read-only and never written to ZODB.
 
 ## Installation
 
-Install the package and apply the GenericSetup profile `plone.registryfromenviron:default` (e.g. via Plone's Add-on control panel).
+Add the package to your Plone image / buildout / Python environment.
+That's it — no GenericSetup profile needs to be applied and nothing is written to ZODB.
 
-To uninstall, apply the `plone.registryfromenviron:uninstall` profile.
-This reverts `portal_registry` to the base class.
+The package ships with a `plone.registryfromenviron:default` profile for backwards compatibility with 1.x, but it is an empty no-op.
+You may leave it listed as a dependency in your own `metadata.xml` without any effect.
+
+"Uninstalling" means removing the package from the deployment (and restarting the processes).
+There is no uninstall profile in 2.0.
 
 ## Environment variable format
 
@@ -64,11 +70,23 @@ Collection and dict values use JSON syntax.
 
 ## Behavior
 
-- Environment variables are scanned **once at process startup**.
-  Changes require a restart.
-- Overrides are **read-only** -- writes via the registry API go to ZODB, but reads always return the env value.
+- Environment variables are scanned **once at process startup**. Changes require a restart.
+- Activation is automatic: if `PLONE_REGISTRY_*` variables are present, the patch is applied at first import. If not, nothing happens.
+- Overrides are **read-only** — writes via the registry API still go to ZODB, but subsequent reads for overridden keys return the env value.
 - Only **existing** registry keys can be overridden (the field definition is needed for type coercion).
 - Invalid values or unknown keys are logged and silently skipped (ZODB value is used as fallback).
+- **Known limitation:** direct access via `registry.records['key'].value` bypasses the override, the same as in 1.x. Use `registry['key']`, `registry.get('key')`, or a `RecordsProxy` (all go through the patched read path).
+
+## Upgrading from 1.x
+
+Version 2.0 drops the `portal_registry.__class__` swap approach (see [issue #1](https://github.com/bluedynamics/plone-registryfromenviron/issues/1) for the root-cause analysis).
+
+For operators upgrading from 1.x:
+
+- **Deploy 2.0, then click "Upgrade" once in the Plone Add-ons control panel.** A GenericSetup upgrade step (1 → 2) clears any stale `EnvOverrideRegistry` class references from the site root and unregisters the addon from the "Installed" list of the control panel. Runtime activation is driven by env vars; the click only tidies up ZODB and the UI. If you do nothing, the addon keeps working correctly — the cleanup is cosmetic.
+- **No uninstall step needed.** Stop setting `PLONE_REGISTRY_*` env vars to deactivate, or remove the package from the deployment.
+- **The `plone.registryfromenviron:uninstall` profile is gone.** If your automation calls it, remove the call — it's a no-op.
+- **Activation is now import-driven, not install-step-driven.** Every pod picks up the behavior immediately on startup; no per-site install run is required anymore.
 
 ## Source Code and Contributions
 

@@ -3,36 +3,28 @@
     xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
     >
 
+  <!--
+    The package activates via import-time monkey-patch (see __init__.py).
+    The "default" profile is kept as an empty no-op so that sites listing
+    plone.registryfromenviron:default in their own metadata.xml dependencies
+    continue to import cleanly after upgrading from 1.x.
+  -->
   <genericsetup:registerProfile
       name="default"
       title="plone.registryfromenviron"
-      description="Override plone.registry values from environment variables"
+      description="No-op profile. Overrides are driven by PLONE_REGISTRY_* env vars at process start."
       provides="Products.GenericSetup.interfaces.EXTENSION"
       for="plone.base.interfaces.IPloneSiteRoot"
       directory="profiles/default"
       />
 
-  <genericsetup:importStep
-      name="plone.registryfromenviron"
-      title="Install plone.registryfromenviron"
-      description="Swap portal_registry class to EnvOverrideRegistry."
-      handler="plone.registryfromenviron.setuphandlers.install"
-      />
-
-  <genericsetup:registerProfile
-      name="uninstall"
-      title="plone.registryfromenviron (uninstall)"
-      description="Revert registry class"
-      provides="Products.GenericSetup.interfaces.EXTENSION"
-      for="plone.base.interfaces.IPloneSiteRoot"
-      directory="profiles/uninstall"
-      />
-
-  <genericsetup:importStep
-      name="plone.registryfromenviron.uninstall"
-      title="Uninstall plone.registryfromenviron"
-      description="Revert portal_registry class to base Registry."
-      handler="plone.registryfromenviron.setuphandlers.uninstall"
+  <genericsetup:upgradeStep
+      profile="plone.registryfromenviron:default"
+      source="1"
+      destination="2"
+      title="v1 → v2 cleanup"
+      description="Drop stale EnvOverrideRegistry references from the site root and unregister the profile from the Add-ons panel. Runtime activation is driven by env vars; this step only tidies up ZODB and the UI."
+      handler=".upgrades.upgrade_to_2"
       />
 
 </configure>
