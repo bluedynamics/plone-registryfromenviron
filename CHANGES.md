@@ -1,6 +1,6 @@
 # Changes
 
-## 2.0.0 (unreleased)
+## 2.0.0 (2026-04-21)
 
 - **Breaking:** Dropped the `portal_registry.__class__` swap approach. Activation
   is now driven by an import-time monkey-patch on
