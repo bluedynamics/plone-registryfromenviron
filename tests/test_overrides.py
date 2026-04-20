@@ -227,90 +227,6 @@ class TestGetOverride:
         assert get_override(registry, "my.alias") == 77
 
 
-# ── EnvOverrideRegistry tests ────────────────────────────────────
-
-
-class TestEnvOverrideRegistry:
-    def test_getitem_with_override(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
-        _clean_overrides.RAW_OVERRIDES["my.textline"] = "from_env"
-        assert registry["my.textline"] == "from_env"
-
-    def test_getitem_fallback_to_zodb(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
-        assert registry["my.textline"] == "original"
-
-    def test_getitem_keyerror_for_missing(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
-        with pytest.raises(KeyError):
-            registry["no.such.key"]
-
-    def test_get_with_override(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
-        _clean_overrides.RAW_OVERRIDES["my.number"] = "42"
-        assert registry.get("my.number") == 42
-
-    def test_get_fallback_to_zodb(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
-        assert registry.get("my.textline") == "original"
-
-    def test_get_returns_default_for_missing(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
-        assert registry.get("no.such.key", "default") == "default"
-
-    def test_get_returns_none_for_missing_no_default(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
-        assert registry.get("no.such.key") is None
-
-    def test_bool_override(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
-        _clean_overrides.RAW_OVERRIDES["my.flag"] = "true"
-        assert registry["my.flag"] is True
-
-    def test_list_override(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
-        _clean_overrides.RAW_OVERRIDES["my.items"] = '["x", "y"]'
-        assert registry["my.items"] == ["x", "y"]
-
-    def test_float_override(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
-        _clean_overrides.RAW_OVERRIDES["my.rate"] = "9.81"
-        assert registry["my.rate"] == 9.81
-
-    def test_dict_override(self, _clean_overrides, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        registry.__class__ = EnvOverrideRegistry
-        _clean_overrides.RAW_OVERRIDES["my.mapping"] = '{"a": "1"}'
-        assert registry["my.mapping"] == {"a": "1"}
-
-    def test_is_subclass_of_base(self):
-        from plone.app.registry.registry import Registry as BaseAppRegistry
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-
-        assert issubclass(EnvOverrideRegistry, BaseAppRegistry)
-
-
 # ── setuphandlers tests ──────────────────────────────────────────
 
 
@@ -497,6 +413,27 @@ class TestPatchedRegistry:
 
         assert AppRegistry.__getitem__ is BaseRegistry.__getitem__
         assert AppRegistry.get is BaseRegistry.get
+
+
+# ── EnvOverrideRegistry alias tests ─────────────────────────────
+
+
+class TestEnvOverrideRegistryAlias:
+    """v1.x pickle-compat: EnvOverrideRegistry must resolve to plain Registry."""
+
+    def test_alias_is_base_registry(self):
+        from plone.registry.registry import Registry as BaseRegistry
+        from plone.registryfromenviron.registry import EnvOverrideRegistry
+
+        assert EnvOverrideRegistry is BaseRegistry
+
+    def test_instance_type_is_base_registry(self):
+        """An instance created via the alias is a plain Registry."""
+        from plone.registry.registry import Registry as BaseRegistry
+        from plone.registryfromenviron.registry import EnvOverrideRegistry
+
+        obj = EnvOverrideRegistry()
+        assert type(obj) is BaseRegistry
 
 
 # ── env var scanning tests ───────────────────────────────────────
