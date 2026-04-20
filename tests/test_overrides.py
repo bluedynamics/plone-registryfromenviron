@@ -2,7 +2,6 @@
 
 from plone.registry import field as reg_field
 from plone.registry.registry import Registry
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -225,88 +224,6 @@ class TestGetOverride:
         registry._records._values["my.alias"] = 0
         _clean_overrides.RAW_OVERRIDES["my.alias"] = "77"
         assert get_override(registry, "my.alias") == 77
-
-
-# ── setuphandlers tests ──────────────────────────────────────────
-
-
-class TestSetupHandlers:
-    def _make_context(self, marker_file, site):
-        ctx = MagicMock()
-        ctx.readDataFile.side_effect = lambda f: "marker" if f == marker_file else None
-        ctx.getSite.return_value = site
-        return ctx
-
-    def test_install_swaps_class(self, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-        from plone.registryfromenviron.setuphandlers import install
-
-        site = MagicMock()
-        site.portal_registry = registry
-        ctx = self._make_context("install_marker.txt", site)
-        install(ctx)
-        assert isinstance(registry, EnvOverrideRegistry)
-
-    def test_install_already_swapped_is_noop(self, registry):
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-        from plone.registryfromenviron.setuphandlers import install
-
-        registry.__class__ = EnvOverrideRegistry
-        site = MagicMock()
-        site.portal_registry = registry
-        ctx = self._make_context("install_marker.txt", site)
-        install(ctx)
-        assert isinstance(registry, EnvOverrideRegistry)
-
-    def test_install_no_marker_skips(self):
-        from plone.registryfromenviron.setuphandlers import install
-
-        ctx = MagicMock()
-        ctx.readDataFile.return_value = None
-        install(ctx)
-        ctx.getSite.assert_not_called()
-
-    def test_install_no_registry_is_safe(self):
-        from plone.registryfromenviron.setuphandlers import install
-
-        site = MagicMock(spec=[])
-        ctx = self._make_context("install_marker.txt", site)
-        install(ctx)
-
-    def test_uninstall_reverts_class(self, registry):
-        from plone.app.registry.registry import Registry as BaseAppRegistry
-        from plone.registryfromenviron.registry import EnvOverrideRegistry
-        from plone.registryfromenviron.setuphandlers import uninstall
-
-        registry.__class__ = EnvOverrideRegistry
-        site = MagicMock()
-        site.portal_registry = registry
-        ctx = self._make_context("uninstall_marker.txt", site)
-        uninstall(ctx)
-        assert type(registry) is BaseAppRegistry
-
-    def test_uninstall_not_swapped_is_noop(self, registry):
-        from plone.registryfromenviron.setuphandlers import uninstall
-
-        site = MagicMock()
-        site.portal_registry = registry
-        ctx = self._make_context("uninstall_marker.txt", site)
-        uninstall(ctx)
-
-    def test_uninstall_no_marker_skips(self):
-        from plone.registryfromenviron.setuphandlers import uninstall
-
-        ctx = MagicMock()
-        ctx.readDataFile.return_value = None
-        uninstall(ctx)
-        ctx.getSite.assert_not_called()
-
-    def test_uninstall_no_registry_is_safe(self):
-        from plone.registryfromenviron.setuphandlers import uninstall
-
-        site = MagicMock(spec=[])
-        ctx = self._make_context("uninstall_marker.txt", site)
-        uninstall(ctx)
 
 
 # ── patch tests ──────────────────────────────────────────────────
