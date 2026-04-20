@@ -418,3 +418,51 @@ class TestImportTimeActivation:
         assert _clean_overrides.RAW_OVERRIDES == {}
         _maybe_activate()
         assert BaseRegistry.__getitem__ is orig_getitem
+
+
+# ── upgrade step tests ───────────────────────────────────────────
+
+
+class _FakeSite:
+    _p_changed = False
+
+
+class _FakeSetupTool:
+    def __init__(self):
+        self.aq_parent = _FakeSite()
+        self.unset_called_with = None
+
+    def unsetLastVersionForProfile(self, profile_id):
+        self.unset_called_with = profile_id
+
+
+class TestUpgradeStep:
+    """Tests for the v1 → v2 GS upgrade step."""
+
+    def test_upgrade_forces_site_re_pickle(self):
+        from plone.registryfromenviron.upgrades import upgrade_to_2
+
+        tool = _FakeSetupTool()
+        upgrade_to_2(tool)
+        assert tool.aq_parent._p_changed is True
+
+    def test_upgrade_unregisters_profile(self):
+        from plone.registryfromenviron.upgrades import upgrade_to_2
+
+        tool = _FakeSetupTool()
+        upgrade_to_2(tool)
+        assert tool.unset_called_with == "plone.registryfromenviron:default"
+
+    def test_upgrade_handles_missing_site(self):
+        """If aq_parent is missing, the unregister still runs cleanly."""
+        from plone.registryfromenviron.upgrades import upgrade_to_2
+
+        class _ToolWithoutParent:
+            unset_called_with = None
+
+            def unsetLastVersionForProfile(self, profile_id):
+                self.unset_called_with = profile_id
+
+        tool = _ToolWithoutParent()
+        upgrade_to_2(tool)
+        assert tool.unset_called_with == "plone.registryfromenviron:default"

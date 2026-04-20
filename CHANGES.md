@@ -13,6 +13,11 @@
 - **Compat:** `plone.registryfromenviron.registry.EnvOverrideRegistry` remains
   as an alias for `plone.registry.registry.Registry` so v1.x ZODB pickles that
   reference the symbol continue to load.
+- **Upgrade path:** added a GenericSetup upgrade step (1 → 2) that, on click in
+  the Plone Add-ons control panel, re-pickles the site root (dropping stale
+  `EnvOverrideRegistry` class references) and unregisters the addon from the
+  "Installed" list. Runtime activation remains env-var-driven; the step only
+  tidies up ZODB and the UI.
 - Fixed [issue #1](https://github.com/bluedynamics/plone-registryfromenviron/issues/1):
   class-swap did not persist reliably across ZODB connections because the class
   reference is cached in the parent object's pickle. The new approach avoids

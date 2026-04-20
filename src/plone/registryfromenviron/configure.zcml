@@ -18,4 +18,13 @@
       directory="profiles/default"
       />
 
+  <genericsetup:upgradeStep
+      profile="plone.registryfromenviron:default"
+      source="1"
+      destination="2"
+      title="v1 → v2 cleanup"
+      description="Drop stale EnvOverrideRegistry references from the site root and unregister the profile from the Add-ons panel. Runtime activation is driven by env vars; this step only tidies up ZODB and the UI."
+      handler=".upgrades.upgrade_to_2"
+      />
+
 </configure>

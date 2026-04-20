@@ -83,7 +83,7 @@ Version 2.0 drops the `portal_registry.__class__` swap approach (see [issue #1](
 
 For operators upgrading from 1.x:
 
-- **No migration step needed.** The `EnvOverrideRegistry` name still exists as an alias to the plain `Registry` class, so any ZODB pickle that references it (rare but possible) unpickles cleanly.
+- **Deploy 2.0, then click "Upgrade" once in the Plone Add-ons control panel.** A GenericSetup upgrade step (1 → 2) clears any stale `EnvOverrideRegistry` class references from the site root and unregisters the addon from the "Installed" list of the control panel. Runtime activation is driven by env vars; the click only tidies up ZODB and the UI. If you do nothing, the addon keeps working correctly — the cleanup is cosmetic.
 - **No uninstall step needed.** Stop setting `PLONE_REGISTRY_*` env vars to deactivate, or remove the package from the deployment.
 - **The `plone.registryfromenviron:uninstall` profile is gone.** If your automation calls it, remove the call — it's a no-op.
 - **Activation is now import-driven, not install-step-driven.** Every pod picks up the behavior immediately on startup; no per-site install run is required anymore.
