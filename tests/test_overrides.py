@@ -392,7 +392,9 @@ class TestEnvVarScanning:
 class TestImportTimeActivation:
     """The package should patch Registry at import if RAW_OVERRIDES is non-empty."""
 
-    def test_maybe_activate_patches_when_overrides_present(self, monkeypatch, _clean_overrides):
+    def test_maybe_activate_patches_when_overrides_present(
+        self, monkeypatch, _clean_overrides
+    ):
         from plone.registry.registry import Registry as BaseRegistry
         from plone.registryfromenviron import _maybe_activate
         from plone.registryfromenviron.patch import unpatch
