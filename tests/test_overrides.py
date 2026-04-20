@@ -384,3 +384,35 @@ class TestEnvVarScanning:
             "plone.smtp_host": "mail.test.com",
             "plone.flag": "true",
         }
+
+
+# ── import-time activation tests ─────────────────────────────────
+
+
+class TestImportTimeActivation:
+    """The package should patch Registry at import if RAW_OVERRIDES is non-empty."""
+
+    def test_maybe_activate_patches_when_overrides_present(self, monkeypatch, _clean_overrides):
+        from plone.registry.registry import Registry as BaseRegistry
+        from plone.registryfromenviron import _maybe_activate
+        from plone.registryfromenviron.patch import unpatch
+
+        unpatch()  # clean baseline
+        orig_getitem = BaseRegistry.__getitem__
+        _clean_overrides.RAW_OVERRIDES["some.key"] = "v"
+        try:
+            _maybe_activate()
+            assert BaseRegistry.__getitem__ is not orig_getitem
+        finally:
+            unpatch()
+
+    def test_maybe_activate_noop_when_no_overrides(self, _clean_overrides):
+        from plone.registry.registry import Registry as BaseRegistry
+        from plone.registryfromenviron import _maybe_activate
+        from plone.registryfromenviron.patch import unpatch
+
+        unpatch()  # ensure clean baseline
+        orig_getitem = BaseRegistry.__getitem__
+        assert _clean_overrides.RAW_OVERRIDES == {}
+        _maybe_activate()
+        assert BaseRegistry.__getitem__ is orig_getitem
