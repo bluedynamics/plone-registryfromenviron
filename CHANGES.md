@@ -2,6 +2,9 @@
 
 ## 2.0.1 (unreleased)
 
+- Declare and test Python 3.15 support: trove classifier and CI test matrix.
+  The test suite passes on 3.15.0 without code changes.
+
 - Pin ruff to 0.16.7 in the QA workflow instead of running unpinned
   `uvx ruff`, so ruff releases no longer change CI behavior on unrelated PRs.
   Newer ruff also formats Python code blocks in Markdown; one plan document
