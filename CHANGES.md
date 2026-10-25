@@ -1,5 +1,13 @@
 # Changes
 
+## 2.0.1 (unreleased)
+
+- Pin ruff to 0.16.7 in the QA workflow instead of running unpinned
+  `uvx ruff`, so ruff releases no longer change CI behavior on unrelated PRs.
+  Newer ruff also formats Python code blocks in Markdown; one plan document
+  is reformatted accordingly. Part of the ecosystem-wide alignment
+  [bluedynamics/plone-pgcatalog#217](https://github.com/bluedynamics/plone-pgcatalog/issues/217).
+
 ## 2.0.0 (2026-04-21)
 
 - **Breaking:** Dropped the `portal_registry.__class__` swap approach. Activation
