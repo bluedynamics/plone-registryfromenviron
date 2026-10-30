@@ -12,6 +12,7 @@ the same Plone image can run in development, staging and production with differe
 
 At import time, the package scans `os.environ` for `PLONE_REGISTRY_*` variables.
 If any are present, it patches `plone.registry.registry.Registry.__getitem__` and `.get` so that reads consult the env-var values first, falling back to ZODB when a key is not overridden.
+If [lineage.registry](https://pypi.org/project/lineage.registry/) is installed, its `LineageRegistry` (the subsite registry of collective.lineage) is patched the same way, so overrides apply in lineage subsites too.
 If no matching env vars are set, the package is a silent no-op with zero runtime cost.
 
 All existing registry data is preserved — overrides are read-only and never written to ZODB.
@@ -75,7 +76,10 @@ Collection and dict values use JSON syntax.
 - Overrides are **read-only** — writes via the registry API still go to ZODB, but subsequent reads for overridden keys return the env value.
 - Only **existing** registry keys can be overridden (the field definition is needed for type coercion).
 - Invalid values or unknown keys are logged and silently skipped (ZODB value is used as fallback).
-- **Known limitation:** direct access via `registry.records['key'].value` bypasses the override, the same as in 1.x. Use `registry['key']`, `registry.get('key')`, or a `RecordsProxy` (all go through the patched read path).
+- Overrides apply to the Plone site root and to lineage subsites alike. An override wins over a value stored locally in a subsite. There is no way to set different env values per subsite.
+- **Known limitations:**
+  - Direct access via `registry.records['key'].value` bypasses the override, the same as in 1.x. Use `registry['key']`, `registry.get('key')`, or a `RecordsProxy` (all go through the patched read path).
+  - Other `Registry` subclasses that override `__getitem__` or `get` themselves are not patched. Only `plone.registry`'s `Registry` (and subclasses inheriting its methods, such as `plone.app.registry`'s) and lineage.registry's `LineageRegistry` are covered.
 
 ## Upgrading from 1.x
 

@@ -37,6 +37,7 @@ target = "plone"
 
 [project.optional-dependencies]
 test = [
+    "lineage.registry",
     "pytest",
     "pytest-cov",
 ]

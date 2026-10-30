@@ -2,6 +2,16 @@
 
 ## 2.0.1 (unreleased)
 
+- Fix: environment overrides now apply in collective.lineage subsites.
+  lineage.registry's `LineageRegistry` overrides `__getitem__` and `get`, so
+  the patch on the base `Registry` never ran there: every read inside a
+  subsite, including `forInterface()` proxies, returned the value stored at
+  the site root. `LineageRegistry` is now patched as well when lineage.registry
+  is installed. The field used for type coercion is now resolved via
+  `registry.records[name].field`, because `LineageRecords._getField()` fails
+  for fields inherited from the parent registry.
+  [#8](https://github.com/bluedynamics/plone-registryfromenviron/issues/8)
+
 - Declare and test Python 3.15 support: trove classifier and CI test matrix.
   The test suite passes on 3.15.0 without code changes.
 
