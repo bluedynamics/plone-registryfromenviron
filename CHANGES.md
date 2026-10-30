@@ -2,6 +2,11 @@
 
 ## 2.0.1 (2026-10-30)
 
+- Bump `hynek/build-and-inspect-python-package` from v2 to v3.0.1 in the
+  release workflow. Current hatchling emits `Metadata-Version: 2.5`, which the
+  Twine bundled in v2 rejects, so the 2.0.1 release build failed. Same fix as
+  [bluedynamics/plone-pgcatalog#210](https://github.com/bluedynamics/plone-pgcatalog/pull/210).
+
 - Fix: environment overrides now apply in collective.lineage subsites.
   lineage.registry's `LineageRegistry` overrides `__getitem__` and `get`, so
   the patch on the base `Registry` never ran there: every read inside a
