@@ -3,6 +3,7 @@
 Activation model: at first import, if any ``PLONE_REGISTRY_*`` env vars are set,
 the package patches ``plone.registry.registry.Registry.__getitem__`` and ``.get``
 to consult those variables before falling back to the ZODB-stored value.
+If lineage.registry is installed, ``LineageRegistry`` is patched as well.
 
 If no matching env vars are present, the package is a no-op — no patching occurs
 and there is zero runtime overhead.

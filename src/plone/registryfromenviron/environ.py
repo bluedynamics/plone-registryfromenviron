@@ -46,7 +46,9 @@ def get_override(registry, name):
         return _MARKER
     if name not in _COERCED:
         try:
-            field = registry.records._getField(name)
+            # Not records._getField(): LineageRecords._getField is broken
+            # for fields inherited from the parent registry.
+            field = registry.records[name].field
             if isinstance(field, FieldRef):
                 field = field.originalField
             _COERCED[name] = coerce_value(RAW_OVERRIDES[name], field)

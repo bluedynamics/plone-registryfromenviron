@@ -1,7 +1,11 @@
 """Tests for plone.registryfromenviron."""
 
 from plone.registry import field as reg_field
+from plone.registry.interfaces import IRegistry
 from plone.registry.registry import Registry
+from zope import schema
+from zope.interface import Interface
+from zope.interface.registry import Components
 
 import pytest
 
@@ -330,6 +334,120 @@ class TestPatchedRegistry:
 
         assert AppRegistry.__getitem__ is BaseRegistry.__getitem__
         assert AppRegistry.get is BaseRegistry.get
+
+
+# ── lineage.registry subsite tests ──────────────────────────────
+
+
+class ISettings(Interface):
+    proxies = schema.Tuple(title="Proxies", value_type=schema.TextLine())
+
+
+SETTINGS_KEY = ISettings.__identifier__ + ".proxies"
+
+
+@pytest.fixture
+def subsite_registry(registry):
+    """A real lineage.registry LineageRegistry for a subsite below ``registry``.
+
+    The parent registry is found through the subsite's component registry
+    bases, as in a Plone site with collective.lineage.
+    """
+    from lineage.registry.proxy import LineageRegistry
+
+    registry._records._fields[SETTINGS_KEY] = reg_field.Tuple(
+        title="Proxies",
+        value_type=reg_field.TextLine(),
+    )
+    registry._records._values[SETTINGS_KEY] = ("http://stale:80",)
+    root_sm = Components("root")
+    root_sm.registerUtility(registry, IRegistry)
+    subsite_sm = Components("subsite", bases=(root_sm,))
+    return LineageRegistry("lineage_registry", parent=subsite_sm)
+
+
+class TestPatchedLineageRegistry:
+    """Overrides reach lineage subsites (issue #8)."""
+
+    @pytest.fixture
+    def patched(self, _clean_overrides):
+        from plone.registryfromenviron.patch import apply_patch
+        from plone.registryfromenviron.patch import unpatch
+
+        apply_patch()
+        yield _clean_overrides
+        unpatch()
+
+    def test_inherited_getitem_with_override(self, patched, subsite_registry):
+        patched.RAW_OVERRIDES["my.textline"] = "from_env"
+        assert subsite_registry["my.textline"] == "from_env"
+
+    def test_inherited_get_with_override(self, patched, subsite_registry):
+        patched.RAW_OVERRIDES["my.number"] = "42"
+        assert subsite_registry.get("my.number") == 42
+
+    def test_inherited_fallback_to_parent(self, patched, subsite_registry):
+        assert subsite_registry["my.textline"] == "original"
+        assert subsite_registry.get("my.textline") == "original"
+
+    def test_local_value_with_override(self, patched, subsite_registry):
+        subsite_registry["my.textline"] = "local"
+        patched.RAW_OVERRIDES["my.textline"] = "from_env"
+        assert subsite_registry["my.textline"] == "from_env"
+
+    def test_local_value_fallback(self, patched, subsite_registry):
+        subsite_registry["my.textline"] = "local"
+        assert subsite_registry["my.textline"] == "local"
+
+    def test_for_interface_proxy_with_override(self, patched, subsite_registry):
+        patched.RAW_OVERRIDES[SETTINGS_KEY] = '["http://varnish:8080"]'
+        settings = subsite_registry.forInterface(ISettings, check=False)
+        assert settings.proxies == ("http://varnish:8080",)
+
+    def test_get_missing_returns_default(self, patched, subsite_registry):
+        patched.RAW_OVERRIDES["no.such.key"] = "value"
+        assert subsite_registry.get("no.such.key", "default") == "default"
+
+    def test_getitem_keyerror_for_missing(self, patched, subsite_registry):
+        patched.RAW_OVERRIDES["no.such.key"] = "value"
+        with pytest.raises(KeyError):
+            subsite_registry["no.such.key"]
+
+
+class TestLineagePatch:
+    """lineage.registry is optional: patched when importable, skipped otherwise."""
+
+    def test_lineage_registry_patched_and_restored(self, _clean_overrides):
+        from lineage.registry.proxy import LineageRegistry
+        from plone.registryfromenviron.patch import apply_patch
+        from plone.registryfromenviron.patch import unpatch
+
+        unpatch()
+        orig_getitem = LineageRegistry.__getitem__
+        orig_get = LineageRegistry.get
+        apply_patch()
+        assert LineageRegistry.__getitem__ is not orig_getitem
+        assert LineageRegistry.get is not orig_get
+        unpatch()
+        assert LineageRegistry.__getitem__ is orig_getitem
+        assert LineageRegistry.get is orig_get
+
+    def test_without_lineage_patches_base_only(self, _clean_overrides, monkeypatch):
+        from lineage.registry.proxy import LineageRegistry
+        from plone.registry.registry import Registry as BaseRegistry
+        from plone.registryfromenviron import patch
+
+        patch.unpatch()
+        monkeypatch.setattr(patch, "LineageRegistry", None)
+        orig_base = BaseRegistry.__getitem__
+        orig_lineage = LineageRegistry.__getitem__
+        try:
+            patch.apply_patch()
+            assert BaseRegistry.__getitem__ is not orig_base
+            assert LineageRegistry.__getitem__ is orig_lineage
+        finally:
+            patch.unpatch()
+        assert BaseRegistry.__getitem__ is orig_base
 
 
 # ── EnvOverrideRegistry alias tests ─────────────────────────────
