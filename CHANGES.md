@@ -1,6 +1,6 @@
 # Changes
 
-## 2.0.1 (unreleased)
+## 2.0.1 (2026-10-30)
 
 - Fix: environment overrides now apply in collective.lineage subsites.
   lineage.registry's `LineageRegistry` overrides `__getitem__` and `get`, so
